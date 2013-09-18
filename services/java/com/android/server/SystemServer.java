@@ -45,6 +45,7 @@ import android.util.EventLog;
 import android.util.Log;
 import android.util.Slog;
 import android.view.WindowManager;
+import android.os.DynamicPManager;
 
 import com.android.internal.os.BinderInternal;
 import com.android.internal.os.SamplingProfilerIntegration;
@@ -64,6 +65,7 @@ import com.android.server.power.PowerManagerService;
 import com.android.server.power.ShutdownThread;
 import com.android.server.usb.UsbService;
 import com.android.server.wm.WindowManagerService;
+import com.android.server.WifiDisplayManagerService;
 
 import dalvik.system.VMRuntime;
 import dalvik.system.Zygote;
@@ -125,6 +127,7 @@ class ServerThread extends Thread {
         ContentService contentService = null;
         LightsService lights = null;
         PowerManagerService power = null;
+        DynamicPManagerService dpm = null;
         DisplayManagerService display = null;
         BatteryService battery = null;
         VibratorService vibrator = null;
@@ -136,6 +139,7 @@ class ServerThread extends Thread {
         ConnectivityService connectivity = null;
         WifiP2pService wifiP2p = null;
         WifiService wifi = null;
+        EthernetService ethernet = null;	/*  EthernetService (add by shugeLinux@gmail.com)  */
         NsdService serviceDiscovery= null;
         IPackageManager pm = null;
         Context context = null;
@@ -287,6 +291,10 @@ class ServerThread extends Thread {
             Slog.i(TAG, "Battery Service");
             battery = new BatteryService(context, lights);
             ServiceManager.addService("battery", battery);
+            
+            Slog.i(TAG, "DynamicPManager");
+            dpm = new DynamicPManagerService(context);
+            ServiceManager.addService(DynamicPManager.DPM_SERVICE, dpm);                    
 
             Slog.i(TAG, "Vibrator Service");
             vibrator = new VibratorService(context);
@@ -315,6 +323,20 @@ class ServerThread extends Thread {
                     !firstBoot, onlyCore);
             ServiceManager.addService(Context.WINDOW_SERVICE, wm);
             ServiceManager.addService(Context.INPUT_SERVICE, inputManager);
+
+			if(SystemProperties.get("ro.display.switch").equals("1"))
+			{
+				Slog.i(TAG, "Display Manager");
+				DisplayManagerServiceAw display_aw = new DisplayManagerServiceAw(context,power);
+	            ServiceManager.addService(Context.DISPLAY_SERVICE_AW, display_aw);
+			}
+
+			if(SystemProperties.get("ro.wifidisplay.switch").equals("1"))
+			{
+				Slog.i(TAG, "Display Manager");
+				WifiDisplayManagerService wifidisplay = new WifiDisplayManagerService(context,power);
+	            ServiceManager.addService(Context.WIFIDISPLAY_SERVICE, wifidisplay);
+			}
 
             ActivityManagerService.self().setWindowManager(wm);
 
@@ -481,6 +503,16 @@ class ServerThread extends Thread {
             } catch (Throwable e) {
                 reportWtf("starting Wi-Fi P2pService", e);
             }
+
+		   /* Begin (add by shugeLinux@gmail.com) */
+           try {
+                Slog.i(TAG, "Ethernet Service");
+                ethernet = new EthernetService(context);
+                ServiceManager.addService(Context.ETHERNET_SERVICE, ethernet);
+            } catch (Throwable e) {
+                reportWtf("starting Ethernet Service", e);
+            }
+		   /* End (add by shugeLinux@gmail.com) */
 
            try {
                 Slog.i(TAG, "Wi-Fi Service");

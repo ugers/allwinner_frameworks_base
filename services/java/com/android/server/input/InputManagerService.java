@@ -89,6 +89,9 @@ import java.util.HashSet;
 
 import libcore.io.Streams;
 import libcore.util.Objects;
+import android.os.SystemProperties;
+
+
 
 /*
  * Wraps the C++ InputManager and provides its callbacks.
@@ -186,6 +189,8 @@ public class InputManagerService extends IInputManager.Stub
     private static native void nativeReloadDeviceAliases(int ptr);
     private static native String nativeDump(int ptr);
     private static native void nativeMonitor(int ptr);
+    
+    	private static native void nativeResetTouchCalibration(int ptr);
 
     // Input event injection constants defined in InputDispatcher.h.
     private static final int INPUT_EVENT_INJECTION_SUCCEEDED = 0;
@@ -334,7 +339,7 @@ public class InputManagerService extends IInputManager.Stub
         if (defaultViewport.valid) {
             setDisplayViewport(false, defaultViewport);
         }
-
+		
         if (externalTouchViewport.valid) {
             setDisplayViewport(true, externalTouchViewport);
         } else if (defaultViewport.valid) {
@@ -343,6 +348,10 @@ public class InputManagerService extends IInputManager.Stub
     }
 
     private void setDisplayViewport(boolean external, DisplayViewport viewport) {
+		if(SystemProperties.getInt("ro.sf.hwrotation",0)==270)
+		{						
+			viewport.orientation =(viewport.orientation + 3)%4;
+		}
         nativeSetDisplayViewport(mPtr, external,
                 viewport.displayId, viewport.orientation,
                 viewport.logicalFrame.left, viewport.logicalFrame.top,
@@ -1248,6 +1257,12 @@ public class InputManagerService extends IInputManager.Stub
         synchronized (mInputFilterLock) { }
         nativeMonitor(mPtr);
     }
+    
+    //reset touch calibration
+		public void resetTouchCalibration()
+		{
+			nativeResetTouchCalibration(mPtr);
+		}
 
     // Native callback.
     private void notifyConfigurationChanged(long whenNanos) {

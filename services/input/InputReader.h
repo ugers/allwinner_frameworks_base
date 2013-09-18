@@ -332,6 +332,8 @@ public:
      * The changes flag is a bitfield that indicates what has changed and whether
      * the input devices must all be reopened. */
     virtual void requestRefreshConfiguration(uint32_t changes) = 0;
+    virtual void resetTouchCalibration() = 0;
+
 
     /* Controls the vibrator of a particular input device. */
     virtual void vibrate(int32_t deviceId, const nsecs_t* pattern, size_t patternSize,
@@ -406,6 +408,8 @@ public:
     virtual void vibrate(int32_t deviceId, const nsecs_t* pattern, size_t patternSize,
             ssize_t repeat, int32_t token);
     virtual void cancelVibrate(int32_t deviceId, int32_t token);
+    virtual void resetTouchCalibration();
+
 
 protected:
     // These members are protected so they can be instrumented by test cases.
@@ -1140,6 +1144,12 @@ public:
     virtual uint32_t getSources();
     virtual void populateDeviceInfo(InputDeviceInfo* deviceInfo);
     virtual void dump(String8& dump);
+    //get tp correct params
+    int _get_str2int(char *saddr, int *flag);    
+	  int _get_item(char *saddr, char *name, char *value, unsigned int line_len);    
+	  int _get_line(char *daddr, int  *flag, unsigned int total_len);
+	  virtual int tp_getpara(int  *tp_para);
+
     virtual void configure(nsecs_t when, const InputReaderConfiguration* config, uint32_t changes);
     virtual void reset(nsecs_t when);
     virtual void process(const RawEvent* rawEvent);
@@ -1151,6 +1161,8 @@ public:
 
     virtual void fadePointer();
     virtual void timeoutExpired(nsecs_t when);
+    
+    int tp_para[7];
 
 protected:
     CursorButtonAccumulator mCursorButtonAccumulator;
@@ -1323,7 +1335,10 @@ protected:
     virtual bool hasStylus() const = 0;
 
     virtual void syncTouch(nsecs_t when, bool* outHavePointerIds) = 0;
-
+		bool mNeedCorrect;
+		int32_t mSurfaceWidth;
+    int32_t mSurfaceHeight;
+    
 private:
     // The current viewport.
     // The components of the viewport are specified in the display's rotated orientation.
@@ -1337,8 +1352,7 @@ private:
     // The orientation may be different from the viewport orientation as it specifies
     // the rotation of the surface coordinates required to produce the viewport's
     // requested orientation, so it will depend on whether the device is orientation aware.
-    int32_t mSurfaceWidth;
-    int32_t mSurfaceHeight;
+
     int32_t mSurfaceLeft;
     int32_t mSurfaceTop;
     int32_t mSurfaceOrientation;

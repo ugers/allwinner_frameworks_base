@@ -474,14 +474,18 @@ public final class BluetoothHealth implements BluetoothProfile {
         mContext = context;
         mServiceListener = l;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-        IBluetoothManager mgr = mAdapter.getBluetoothManager();
-        if (mgr != null) {
-            try {
-                mgr.registerStateChangeCallback(mBluetoothStateChangeCallback);
-            } catch (RemoteException e) {
-                Log.e(TAG,"",e);
-            }
+		if ( mAdapter != null )
+        {
+        	IBluetoothManager mgr = mAdapter.getBluetoothManager();
+	        if (mgr != null) {
+	            try {
+	                mgr.registerStateChangeCallback(mBluetoothStateChangeCallback);
+	            } catch (RemoteException e) {
+	                Log.e(TAG,"",e);
+	            }
+	        }
         }
+        
 
         if (!context.bindService(new Intent(IBluetoothHealth.class.getName()), mConnection, 0)) {
             Log.e(TAG, "Could not bind to Bluetooth Health Service");
@@ -491,13 +495,17 @@ public final class BluetoothHealth implements BluetoothProfile {
     /*package*/ void close() {
         if (VDBG) log("close()");
         IBluetoothManager mgr = mAdapter.getBluetoothManager();
-        if (mgr != null) {
+		if ( mAdapter != null )
+		{
+			if (mgr != null) {
             try {
                 mgr.unregisterStateChangeCallback(mBluetoothStateChangeCallback);
             } catch (Exception e) {
                 Log.e(TAG,"",e);
             }
-        }
+        	}
+		}
+        
 
         synchronized (mConnection) {
             if (mService != null) {

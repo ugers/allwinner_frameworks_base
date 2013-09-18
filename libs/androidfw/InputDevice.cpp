@@ -23,7 +23,7 @@
 #include <androidfw/InputDevice.h>
 
 namespace android {
-
+CtpName name = CtpName();
 static const char* CONFIGURATION_FILE_DIR[] = {
         "idc/",
         "keylayout/",
@@ -78,6 +78,18 @@ String8 getInputDeviceConfigurationFilePathByDeviceIdentifier(
             return productPath;
         }
     }
+    int i = 0;  
+   	while(i < name.number){
+	   	#if DEBUG_PROBE        
+			LOGE("#######name = %s", name.default_name.string());       
+			LOGE("#######ctp_name = %s", name.ctp_name[i].string());
+		#endif       
+		if(name.ctp_name[i] == deviceIdentifier.name){
+			return getInputDeviceConfigurationFilePathByName(name.default_name, type);	
+		}	
+		i++;    
+	}
+
 
     // Try device name.
     return getInputDeviceConfigurationFilePathByName(deviceIdentifier.name, type);

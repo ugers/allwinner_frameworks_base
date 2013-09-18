@@ -51,6 +51,9 @@
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
+#include <cutils/properties.h>
+
+
 
 #define INDENT "  "
 #define INDENT2 "    "
@@ -200,6 +203,7 @@ static void synthesizeButtonKeys(InputReaderContext* context, int32_t action,
             AMOTION_EVENT_BUTTON_FORWARD, AKEYCODE_FORWARD);
 }
 
+static bool resetTouch = false;
 
 // --- InputReaderConfiguration ---
 
@@ -692,6 +696,13 @@ void InputReader::cancelVibrate(int32_t deviceId, int32_t token) {
         device->cancelVibrate(token);
     }
 }
+
+void InputReader::resetTouchCalibration()
+{    
+     resetTouch = true;
+}
+
+
 
 void InputReader::dump(String8& dump) {
     AutoMutex _l(mLock);
@@ -2567,6 +2578,7 @@ TouchInputMapper::TouchInputMapper(InputDevice* device) :
         mSource(0), mDeviceMode(DEVICE_MODE_DISABLED),
         mSurfaceWidth(-1), mSurfaceHeight(-1), mSurfaceLeft(0), mSurfaceTop(0),
         mSurfaceOrientation(DISPLAY_ORIENTATION_0) {
+        mNeedCorrect = false;
 }
 
 TouchInputMapper::~TouchInputMapper() {
@@ -2700,6 +2712,297 @@ void TouchInputMapper::dump(String8& dump) {
                 mPointerGestureMaxSwipeWidth);
     }
 }
+
+//get tp correct params
+int TouchInputMapper:: _get_str2int(char *saddr, int *flag)
+{
+    char            *src;
+    char            off;
+    unsigned int    value = 0;
+
+    src = saddr;
+    off = 0;         //0\u017d?0\u0153疲?\u017d?6\u0153? 2\u017d?0\u0153频腬u017e菏?
+    if((src[0] == '0') && ((src[1] == 'x') || (src[1] == 'X')))
+    {
+        src += 2;
+        off  = 1;
+    }
+    else if((src[0] == '-'))  {
+        src += 1;
+        off = 2;
+    }
+    if((!off) || (off == 2))
+    {
+        while(*src != '\0')
+        {
+            if((*src >= '0') && (*src <= '9'))
+            {
+                value = value * 10 + (*src - '0');
+                src ++;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        if(off == 2)
+        {
+            value = -value;
+        }
+    }
+    else if(off == 1)
+    {
+        while(*src != '\0')
+        {
+            if((*src >= '0') && (*src <= '9'))
+            {
+                value = value * 16 + (*src - '0');
+                src ++;
+            }
+            else if((*src >= 'A') && (*src <= 'F'))
+            {
+                value = value * 16 + (*src - 'A' + 10);
+                src ++;
+            }
+            else if((*src >= 'a') && (*src <= 'f'))
+            {
+                value = value * 16 + (*src - 'a' + 10);
+                src ++;;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+    }
+
+    return value;
+}
+//\u017d撕袢eyname, itemname, 以\u0152癷temvalue，返回 0表蔦u0178失败，否则表蔦u0178当前\u017d\u0160理的砛u20ac度
+int TouchInputMapper::_get_item(char *saddr, char *name, char *value, unsigned int line_len)
+{
+    char            *src;
+    char            *dstname;
+    char            *dstvalue;
+    unsigned int    len;
+
+    src = saddr;
+    dstname = name;
+    dstvalue = value;
+
+    len = 0;
+    while(*src != '=')
+    {
+        if(*src != ' ')
+        {
+            *dstname++ = *src;
+            len ++;
+        }
+        src ++;
+        line_len --;
+        if(len > 256)
+        {
+            ALOGD("key name too long\n");
+            return -1;
+        }
+    }
+    *dstname = '\0';
+    src ++;      //跳过 '='
+    line_len --;
+
+    len = 0;
+    while((*src != 0x0A) && (line_len--))
+    {
+        if(*src != ' ')
+        {
+            *dstvalue++ = *src;
+            len ++;
+        }
+        src ++;
+        if(len > 256)
+        {
+            ALOGD("key name too long\n");
+            return -1;
+        }
+    }
+    *dstvalue = '\0';
+
+    return 0;
+}
+//\u017d撕祷氐鼻靶械某\u20ac度，用謀u017e针返回当前的意义
+/********************************************
+* flag = 0      //当前是注释行，或空行
+*      = 1      //当前是字段行
+*      = 2      //当前是子项行，属于字段的下一项
+*      = -1     //当前行不符合规范，出\u017d?*********************************************/
+int  TouchInputMapper::_get_line(char *daddr, int  *flag, unsigned int total_len)
+{
+    char            *src;
+    unsigned int    len = 0;
+
+    src = daddr;
+    if(*src == ';')          //注释行
+    {
+        *flag = 0;
+    }
+    else if((*src == 0x0A))     //回车行
+    {
+        *flag = 0;
+        len = 1;
+
+        return len;
+    }
+    else                     //子字段行
+    {
+        *flag = 1;
+    }
+
+    src ++;
+    len = 1;
+    while(--total_len)
+    {
+        //LOGD("*src = %x\n",*src);
+        if((*src == 0x0A))     
+        {
+            len += 1;
+            break;
+        }
+
+        src ++;
+        
+        len ++;
+        if(len >= 512)
+        {
+            *flag = -1;
+
+            return 0;
+        }
+    }
+
+    return len;
+}
+
+int TouchInputMapper::tp_getpara(int  *tp_para)
+{
+    FILE*           pfd = 0;
+    char            *data = 0;
+    char            *src = 0;
+    unsigned int   len, line_len, check_sum;
+    int             flag, value;
+    char    itemname[128], itemvalue[128];
+
+    pfd = fopen("/data/pointercal", "r+");            //只读
+    if(!pfd)                                                  
+    {
+        //LOGD("para data file not exist\n");
+        
+        goto _err_out;
+    }
+    fseek(pfd, 0, 2);
+    len = ftell(pfd);
+    fseek(pfd, 0, 0);
+
+    data = NULL;
+    if(!len)
+    {
+        ALOGD("bad tp cfg\n");
+        goto _err_out;
+    }
+    data = (char *)malloc(len);
+    if(!data)
+    {
+        //LOGD("fail to malloc memory to store data\n");
+        goto _err_out;
+    }
+    fread(data, 1, len, pfd);
+    fclose(pfd);
+    pfd = NULL;
+    src  = data;
+
+    while(len)
+    {
+        line_len = _get_line(src, &flag, len);
+        ALOGD("line_len = %d\n",line_len);
+        len -= line_len;
+        switch(flag)
+        {
+            case 0:              //注释行，回车行
+                src += line_len;
+                break;
+            case 1:
+                if(_get_item(src, itemname, itemvalue, line_len))
+                {
+                    ALOGD("get item fail\n");
+
+                    goto _err_out;
+                }
+                src += line_len;
+                value = _get_str2int(itemvalue, 0);
+
+                if(!strcmp(itemname, "TP_PARA1"))
+                {
+                    tp_para[0] = value;
+                    //LOGD("value0 = %d\n",value);
+                }
+                else if(!strcmp(itemname, "TP_PARA2"))
+                {
+                    tp_para[1] = value;
+                    //LOGD("value1 = %d\n",value);
+                }
+                else if(!strcmp(itemname, "TP_PARA3"))
+                {
+                    tp_para[2] = value;
+                    //LOGD("value2 = %d\n",value);
+                }
+                else if(!strcmp(itemname, "TP_PARA4"))
+                {
+                    tp_para[3] = value;
+                    //LOGD("value3 = %d\n",value);
+                }
+                else if(!strcmp(itemname, "TP_PARA5"))
+                {
+                    tp_para[4] = value;
+                    //LOGD("value4 = %d\n",value);
+                }
+                else if(!strcmp(itemname, "TP_PARA6"))
+                {
+                    tp_para[5] = value;
+                    //LOGD("value5 = %d\n",value);
+                }
+                else if(!strcmp(itemname, "TP_PARA7"))
+                {
+                    tp_para[6] = value;
+                    //LOGD("value6 = %d\n",value);
+                }
+                break;
+            default:
+                goto _err_out;
+        }
+    }
+    free(data);
+
+    return 1;
+_err_out:
+    tp_para[0] = -28238;
+    tp_para[1] = 125;
+    tp_para[2] = 54543608;
+    tp_para[3] = 89;
+    tp_para[4] = -19020;
+    tp_para[5] = 34218656;
+    tp_para[6] = 65536;
+
+    if(data)
+    {
+        free(data);
+    }
+    if(pfd)
+    {
+        fclose(pfd);
+    }
+
+    return 0;
+}
+
 
 void TouchInputMapper::configure(nsecs_t when,
         const InputReaderConfiguration* config, uint32_t changes) {
@@ -2984,7 +3287,7 @@ void TouchInputMapper::configureSurface(nsecs_t when, bool* outResetNeeded) {
             mSurfaceLeft = 0;
             mSurfaceTop = 0;
             mSurfaceOrientation = DISPLAY_ORIENTATION_0;
-        }
+           }
     }
 
     // If moving between pointer modes, need to reset some state.
@@ -4162,33 +4465,72 @@ void TouchInputMapper::cookPointerData() {
             distance = 0;
         }
 
+				//correct the one touch data here	
+				float adjust_x,adjust_y;
+				adjust_x = float(in.x - mRawPointerAxes.x.minValue) * mXScale;
+        adjust_y = float(in.y - mRawPointerAxes.y.minValue) * mYScale;		
+				if(mNeedCorrect == false)
+				{
+						int ret = tp_getpara(tp_para);
+						if(ret == 1)
+						{
+							adjust_x= ( tp_para[2] + tp_para[0]*adjust_x + tp_para[1]*adjust_x ) / tp_para[6];			
+			    		adjust_y = ( tp_para[5] + tp_para[3]*adjust_y + tp_para[4]*adjust_y ) / tp_para[6];	
+							mNeedCorrect = true;
+						}
+			
+				}
+				else
+				{
+						if(resetTouch == true)
+						{
+								int ret = tp_getpara(tp_para);
+								if(ret == 1)
+								{
+										mNeedCorrect = true;
+										resetTouch = false;
+								}				
+						}
+						adjust_x = ( tp_para[2] + tp_para[0]*adjust_x + tp_para[1]*adjust_x ) / tp_para[6];			
+						adjust_y = ( tp_para[5] + tp_para[3]*adjust_y + tp_para[4]*adjust_y ) / tp_para[6];	
+				}
+
+
         // X and Y
         // Adjust coords for surface orientation.
         float x, y;
         switch (mSurfaceOrientation) {
         case DISPLAY_ORIENTATION_90:
-            x = float(in.y - mRawPointerAxes.y.minValue) * mYScale + mYTranslate;
-            y = float(mRawPointerAxes.x.maxValue - in.x) * mXScale + mXTranslate;
+            //x = float(in.y - mRawPointerAxes.y.minValue) * mYScale + mYTranslate;
+            //y = float(mRawPointerAxes.x.maxValue - in.x) * mXScale + mXTranslate;
+            x = adjust_y;
+            y = mSurfaceWidth-adjust_x;
             orientation -= M_PI_2;
             if (orientation < - M_PI_2) {
                 orientation += M_PI;
             }
             break;
         case DISPLAY_ORIENTATION_180:
-            x = float(mRawPointerAxes.x.maxValue - in.x) * mXScale + mXTranslate;
-            y = float(mRawPointerAxes.y.maxValue - in.y) * mYScale + mYTranslate;
+           // x = float(mRawPointerAxes.x.maxValue - in.x) * mXScale + mXTranslate;
+           // y = float(mRawPointerAxes.y.maxValue - in.y) * mYScale + mYTranslate;
+            x = mSurfaceWidth - adjust_x;
+            y = mSurfaceHeight - adjust_y;
             break;
         case DISPLAY_ORIENTATION_270:
-            x = float(mRawPointerAxes.y.maxValue - in.y) * mYScale + mYTranslate;
-            y = float(in.x - mRawPointerAxes.x.minValue) * mXScale + mXTranslate;
+           // x = float(mRawPointerAxes.y.maxValue - in.y) * mYScale + mYTranslate;
+           // y = float(in.x - mRawPointerAxes.x.minValue) * mXScale + mXTranslate;
+            x = mSurfaceHeight - adjust_y;
+            y = adjust_x;
             orientation += M_PI_2;
             if (orientation > M_PI_2) {
                 orientation -= M_PI;
             }
             break;
         default:
-            x = float(in.x - mRawPointerAxes.x.minValue) * mXScale + mXTranslate;
-            y = float(in.y - mRawPointerAxes.y.minValue) * mYScale + mYTranslate;
+            //x = float(in.x - mRawPointerAxes.x.minValue) * mXScale + mXTranslate;
+            //y = float(in.y - mRawPointerAxes.y.minValue) * mYScale + mYTranslate;
+            x = adjust_x;
+            y = adjust_y;
             break;
         }
 
@@ -5906,6 +6248,11 @@ void MultiTouchInputMapper::syncTouch(nsecs_t when, bool* outHavePointerIds) {
             continue;
         }
 
+			  if((inSlot->getX() == 0) && (inSlot->getY() == 0))
+        {
+               continue;
+        }
+
         if (outCount >= MAX_POINTERS) {
 #if DEBUG_POINTERS
             ALOGD("MultiTouch device %s emitted more than maximum of %d pointers; "
@@ -5939,7 +6286,8 @@ void MultiTouchInputMapper::syncTouch(nsecs_t when, bool* outHavePointerIds) {
         bool isHovering = mTouchButtonAccumulator.getToolType() != AMOTION_EVENT_TOOL_TYPE_MOUSE
                 && (mTouchButtonAccumulator.isHovering()
                         || (mRawPointerAxes.pressure.valid && inSlot->getPressure() <= 0));
-        outPointer.isHovering = isHovering;
+        //outPointer.isHovering = isHovering;
+        outPointer.isHovering = false;
 
         // Assign pointer id using tracking id if available.
         if (*outHavePointerIds) {
@@ -5965,7 +6313,8 @@ void MultiTouchInputMapper::syncTouch(nsecs_t when, bool* outHavePointerIds) {
             } else {
                 outPointer.id = id;
                 mCurrentRawPointerData.idToIndex[id] = outCount;
-                mCurrentRawPointerData.markIdBit(id, isHovering);
+                //mCurrentRawPointerData.markIdBit(id, isHovering);
+                mCurrentRawPointerData.markIdBit(id, outPointer.isHovering);
                 newPointerIdBits.markBit(id);
             }
         }

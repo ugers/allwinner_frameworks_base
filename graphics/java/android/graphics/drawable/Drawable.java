@@ -124,6 +124,8 @@ public abstract class Drawable {
     private boolean mVisible = true;
 
     private int mLayoutDirection;
+    
+    public int resId = -1;
 
     /**
      * Draw in its bounds (set via setBounds) respecting optional effects such

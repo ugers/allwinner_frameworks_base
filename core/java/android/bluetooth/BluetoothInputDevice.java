@@ -227,15 +227,17 @@ public final class BluetoothInputDevice implements BluetoothProfile {
         mContext = context;
         mServiceListener = l;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        IBluetoothManager mgr = mAdapter.getBluetoothManager();
-        if (mgr != null) {
-            try {
-                mgr.registerStateChangeCallback(mBluetoothStateChangeCallback);
-            } catch (RemoteException e) {
-                Log.e(TAG,"",e);
-            }
-        }
+		if ( mAdapter != null )
+		{
+			IBluetoothManager mgr = mAdapter.getBluetoothManager();
+	        if (mgr != null) {
+	            try {
+	                mgr.registerStateChangeCallback(mBluetoothStateChangeCallback);
+	            } catch (RemoteException e) {
+	                Log.e(TAG,"",e);
+	            }
+	        }
+		}
 
         if (!context.bindService(new Intent(IBluetoothInputDevice.class.getName()),
                                  mConnection, 0)) {
@@ -245,14 +247,19 @@ public final class BluetoothInputDevice implements BluetoothProfile {
 
     /*package*/ void close() {
         if (VDBG) log("close()");
-        IBluetoothManager mgr = mAdapter.getBluetoothManager();
-        if (mgr != null) {
-            try {
-                mgr.unregisterStateChangeCallback(mBluetoothStateChangeCallback);
-            } catch (Exception e) {
-                Log.e(TAG,"",e);
-            }
-        }
+
+		if ( mAdapter != null )
+		{
+			IBluetoothManager mgr = mAdapter.getBluetoothManager();
+	        if (mgr != null) {
+	            try {
+	                mgr.unregisterStateChangeCallback(mBluetoothStateChangeCallback);
+	            } catch (Exception e) {
+	                Log.e(TAG,"",e);
+	            }
+	        }
+		}
+		        
 
         synchronized (mConnection) {
             if (mService != null) {
@@ -471,8 +478,12 @@ public final class BluetoothInputDevice implements BluetoothProfile {
     };
 
     private boolean isEnabled() {
-       if (mAdapter.getState() == BluetoothAdapter.STATE_ON) return true;
-       return false;
+		if ( mAdapter != null )
+		{
+			if (mAdapter.getState() == BluetoothAdapter.STATE_ON) return true;
+		}
+       
+		return false;
     }
 
     private boolean isValidDevice(BluetoothDevice device) {

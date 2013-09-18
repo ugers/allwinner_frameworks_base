@@ -42,6 +42,7 @@ import android.media.IAudioService;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.FactoryTest;
 import android.os.Handler;
 import android.os.IBinder;
@@ -1004,8 +1005,14 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
         // SystemUI (status bar) layout policy
         int shortSizeDp = shortSize * DisplayMetrics.DENSITY_DEFAULT / density;
+        
+        String tabeltUI=Build.TABLETUI;
 
-        if (shortSizeDp < 600) {
+        if("true".equals(tabeltUI)){
+            // tabeltUI=true: "tablet" UI with a single combined status & navigation bar
+            mHasSystemNavBar = true;
+            mNavigationBarCanMove = false;
+        } else if (shortSizeDp < 600) {
             // 0-599dp: "phone" UI with a separate status & navigation bar
             mHasSystemNavBar = false;
             mNavigationBarCanMove = true;
@@ -4082,7 +4089,13 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     if (preferredRotation >= 0) {
                         return preferredRotation;
                     }
-                    return Surface.ROTATION_0;
+                   // return Surface.ROTATION_0;
+                   if(SystemProperties.getInt("ro.sf.hwrotation",0)==270)
+		{
+			return  Surface.ROTATION_90; 
+		}else  {
+			return  Surface.ROTATION_0;   
+		}
             }
         }
     }

@@ -19,6 +19,8 @@ package com.android.systemui.statusbar.tablet;
 import com.android.systemui.R;
 import com.android.systemui.statusbar.BaseStatusBar;
 import com.android.systemui.statusbar.DelegateViewHelper;
+import com.android.systemui.statusbar.policy.KeyButtonView;
+import android.content.res.Configuration;
 
 import android.content.Context;
 import android.os.Handler;
@@ -29,8 +31,9 @@ import android.view.MotionEvent;
 import android.widget.FrameLayout;
 
 public class TabletStatusBarView extends FrameLayout {
-    private Handler mHandler;
-
+    private Handler mHandler;	
+	private boolean displayLock = true;
+	
     private final int MAX_PANELS = 5;
     private final View[] mIgnoreChildren = new View[MAX_PANELS];
     private final View[] mPanels = new View[MAX_PANELS];
@@ -72,6 +75,38 @@ public class TabletStatusBarView extends FrameLayout {
         if (view == null) {
             view = findViewById(R.id.nav_buttons);
         }
+
+		//modified by Derek for display of virtual volume keys when TabletStatusBarView layout 
+		//or relayout(e.g. orientation of screen changed). 2012.10.24
+		Configuration config = mContext.getResources().getConfiguration();
+		KeyButtonView volume_up=(KeyButtonView)findViewById(R.id.volume_up);
+		KeyButtonView volume_down=(KeyButtonView)findViewById(R.id.volume_down);
+		KeyButtonView menu =(KeyButtonView)findViewById(R.id.menu);
+		KeyButtonView screenshot =(KeyButtonView)findViewById(R.id.screenshot);
+		if(displayLock)
+		{
+			if(config.screenWidthDp>480)
+			{
+				volume_up.setVisibility(View.VISIBLE);
+				volume_down.setVisibility(View.VISIBLE);
+				menu.setVisibility(View.VISIBLE);
+				screenshot.setVisibility(View.VISIBLE);
+			}
+			else
+			{
+			   volume_up.setVisibility(View.GONE);
+			   volume_down.setVisibility(View.GONE);
+			   screenshot.setVisibility(View.GONE);
+			}
+		}
+		else
+		{
+			volume_up.setVisibility(View.GONE);
+			volume_down.setVisibility(View.GONE);
+			menu.setVisibility(View.GONE);
+			screenshot.setVisibility(View.GONE);
+		}//end modify
+		
         mDelegateHelper.setSourceView(view);
         mDelegateHelper.setInitialTouchRegion(view);
     }
@@ -114,6 +149,31 @@ public class TabletStatusBarView extends FrameLayout {
         return super.onInterceptTouchEvent(ev);
     }
 
+	
+	@Override
+	protected void onSizeChanged(int w, int h, int oldw, int oldh){
+		KeyButtonView volume_up=(KeyButtonView)findViewById(R.id.volume_up);
+		KeyButtonView volume_down=(KeyButtonView)findViewById(R.id.volume_down);
+		KeyButtonView menu =(KeyButtonView)findViewById(R.id.menu);
+		KeyButtonView screenshot =(KeyButtonView)findViewById(R.id.screenshot);
+		View navigationArea=(View)findViewById(R.id.navigationArea);
+		View mNotificationArea = (View)findViewById(R.id.notificationArea);
+		if(displayLock){
+			if(w<navigationArea.getWidth()+mNotificationArea.getWidth()){
+				volume_up.setVisibility(View.GONE);
+				volume_down.setVisibility(View.GONE);
+				screenshot.setVisibility(View.GONE);   //GONE
+			}else{
+				volume_up.setVisibility(View.VISIBLE);
+				volume_down.setVisibility(View.VISIBLE);
+				//menu.setVisibility(View.VISIBLE);
+				screenshot.setVisibility(View.VISIBLE);
+				menu.setVisibility(View.VISIBLE);
+			}
+		}
+				
+	}
+		
     private boolean eventInside(View v, MotionEvent ev) {
         // assume that x and y are window coords because we are.
         final int x = (int)ev.getX();
@@ -134,6 +194,50 @@ public class TabletStatusBarView extends FrameLayout {
         mHandler = h;
     }
 
+	
+	public void setShowVolume(boolean show,Context mContext){
+		displayLock=show;
+		Configuration config = mContext.getResources().getConfiguration();
+		KeyButtonView volume_up=(KeyButtonView)findViewById(R.id.volume_up);
+		KeyButtonView volume_down=(KeyButtonView)findViewById(R.id.volume_down);
+		KeyButtonView menu =(KeyButtonView)findViewById(R.id.menu);
+		KeyButtonView screenshot =(KeyButtonView)findViewById(R.id.screenshot);
+
+		//modified by Derek for display of virtual volume keys when screen lock and unlock, 2012.10.24
+		if(show)
+		{
+			if(config.screenWidthDp>480)
+			{
+				screenshot.setVisibility(View.VISIBLE);
+				volume_up.setVisibility(View.VISIBLE);
+		   		volume_down.setVisibility(View.VISIBLE);
+		   		menu.setVisibility(View.VISIBLE);
+			}
+			else
+			{
+				menu.setVisibility(View.VISIBLE);
+			}
+		}
+		else
+		{
+			volume_up.setVisibility(View.GONE);
+		    volume_down.setVisibility(View.GONE);
+		    menu.setVisibility(View.GONE);
+			screenshot.setVisibility(View.GONE);
+		}//end modify
+		/*if(config.screenWidthDp>480&&show){
+			volume_up.setVisibility(View.VISIBLE);
+			volume_down.setVisibility(View.VISIBLE);
+			//menu.setVisibility(View.VISIBLE);
+			screenshot.setVisibility(View.VISIBLE);
+		}else{
+			volume_up.setVisibility(View.INVISIBLE);
+			volume_down.setVisibility(View.INVISIBLE);
+			menu.setVisibility(View.INVISIBLE);
+			screenshot.setVisibility(View.INVISIBLE);
+		}*/
+	}
+	
     /**
      * Let the status bar know that if you tap on ignore while panel is showing, don't do anything.
      *

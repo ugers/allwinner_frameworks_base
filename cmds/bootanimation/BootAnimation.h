@@ -26,6 +26,8 @@
 #include <EGL/egl.h>
 #include <GLES/gl.h>
 
+#include <media/mediaplayer.h>
+
 class SkBitmap;
 
 namespace android {
@@ -84,6 +86,10 @@ private:
     bool movie();
 
     void checkExit();
+    
+    //add for boot music by kinier
+	void startBootMusic();
+    void stopBootMusic();
 
     sp<SurfaceComposerClient>       mSession;
     AssetManager mAssets;
@@ -97,6 +103,11 @@ private:
     sp<Surface> mFlingerSurface;
     bool        mAndroidAnimation;
     ZipFileRO   mZip;
+    
+    //add for boot music by kinier
+    sp<MediaPlayer> mPlayer;
+	//add for boot video by derek
+	bool        mBootVideo;
 };
 
 // ---------------------------------------------------------------------------

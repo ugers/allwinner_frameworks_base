@@ -50,12 +50,18 @@
 #include <GLES/glext.h>
 #include <EGL/eglext.h>
 
+#include <media/AudioSystem.h>
+#include <binder/IServiceManager.h>
+
 #include "BootAnimation.h"
 
 #define USER_BOOTANIMATION_FILE "/data/local/bootanimation.zip"
 #define SYSTEM_BOOTANIMATION_FILE "/system/media/bootanimation.zip"
 #define SYSTEM_ENCRYPTED_BOOTANIMATION_FILE "/system/media/bootanimation-encrypted.zip"
 #define EXIT_PROP_NAME "service.bootanim.exit"
+
+#define USER_BOOTMUSIC_FILE   "/system/media/boot.wav"
+#define USER_BOOTVIDEO_FILE   "/system/media/boot.avi"
 
 extern "C" int clock_nanosleep(clockid_t clock_id, int flags,
                            const struct timespec *request,
@@ -68,9 +74,23 @@ namespace android {
 BootAnimation::BootAnimation() : Thread(false)
 {
     mSession = new SurfaceComposerClient();
+    
+    mPlayer = NULL;
+	mBootVideo = false;
+	if(access(USER_BOOTVIDEO_FILE, R_OK) == 0){
+    	mBootVideo = true;
+		}
+	
+    if(access(USER_BOOTMUSIC_FILE, R_OK) == 0){
+    	mPlayer = new MediaPlayer();
+		}
 }
 
 BootAnimation::~BootAnimation() {
+	if(mPlayer != NULL){
+    	mPlayer->stop();
+		mPlayer = NULL;
+  	}
 }
 
 void BootAnimation::onFirstRef() {
@@ -214,6 +234,32 @@ status_t BootAnimation::initTexture(void* buffer, size_t len)
     return NO_ERROR;
 }
 
+//add play boot music interface
+void BootAnimation::startBootMusic(){
+
+		if(mPlayer != NULL){
+		    if(mPlayer->setDataSource(USER_BOOTMUSIC_FILE, NULL) == NO_ERROR) { 	
+		        mPlayer->setAudioStreamType(AUDIO_STREAM_MUSIC);
+		        mPlayer->prepare();
+		    }
+		    else{
+		    	return ;	
+		    }
+		  	
+		    mPlayer->setLooping(true);
+		    mPlayer->start();
+  	}
+}
+
+//add stop boot music interface 
+void BootAnimation::stopBootMusic() {
+	  
+	  if(mPlayer != NULL){
+    	mPlayer->stop();
+		mPlayer = NULL;
+  	}
+}
+
 status_t BootAnimation::readyToRun() {
     mAssets.addDefaultAssets();
 
@@ -234,84 +280,129 @@ status_t BootAnimation::readyToRun() {
 
     sp<Surface> s = control->getSurface();
 
-    // initialize opengl and egl
-    const EGLint attribs[] = {
-            EGL_RED_SIZE,   8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE,  8,
-            EGL_DEPTH_SIZE, 0,
-            EGL_NONE
-    };
-    EGLint w, h, dummy;
-    EGLint numConfigs;
-    EGLConfig config;
-    EGLSurface surface;
-    EGLContext context;
+	if(mBootVideo)
+	{
+		sp<IServiceManager> sm = defaultServiceManager();
+	    sp<IBinder> binder;
+	    do {
+	        binder = sm->checkService(String16("media.player"));
+	        if (binder != 0)
+	            break;
+	        ALOGD("media player not published, waiting...");
+	        usleep(500000); // 0.5 s
+	    } while (true);
+		   
+		mPlayer = new MediaPlayer();
+		if(mPlayer == NULL)
+		{
+			ALOGE("MediaPlayer is null!");
+			return BAD_VALUE;
+		}
+		//mMediaPlayerControl = mp;     
+		mPlayer->setDataSource(USER_BOOTVIDEO_FILE, NULL);  
+		 
+	    Parcel*  _parcel = new Parcel; 
+		mPlayer->setParameter(100, *_parcel); 
+		mPlayer->setVideoSurfaceTexture(s->getSurfaceTexture());
+		mPlayer->prepare();   
+		mPlayer->start();    
 
-    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+		while(1)
+		{
+			sleep(1000);
+		}
+	}
+	else
+	{
+		// initialize opengl and egl
+	    const EGLint attribs[] = {
+	            EGL_RED_SIZE,   8,
+	            EGL_GREEN_SIZE, 8,
+	            EGL_BLUE_SIZE,  8,
+	            EGL_DEPTH_SIZE, 0,
+	            EGL_NONE
+	    };
+	    EGLint w, h, dummy;
+	    EGLint numConfigs;
+	    EGLConfig config;
+	    EGLSurface surface;
+	    EGLContext context;
 
-    eglInitialize(display, 0, 0);
-    eglChooseConfig(display, attribs, &config, 1, &numConfigs);
-    surface = eglCreateWindowSurface(display, config, s.get(), NULL);
-    context = eglCreateContext(display, config, NULL, NULL);
-    eglQuerySurface(display, surface, EGL_WIDTH, &w);
-    eglQuerySurface(display, surface, EGL_HEIGHT, &h);
+	    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 
-    if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE)
-        return NO_INIT;
+	    eglInitialize(display, 0, 0);
+	    eglChooseConfig(display, attribs, &config, 1, &numConfigs);
+	    surface = eglCreateWindowSurface(display, config, s.get(), NULL);
+	    context = eglCreateContext(display, config, NULL, NULL);
+	    eglQuerySurface(display, surface, EGL_WIDTH, &w);
+	    eglQuerySurface(display, surface, EGL_HEIGHT, &h);
 
-    mDisplay = display;
-    mContext = context;
-    mSurface = surface;
-    mWidth = w;
-    mHeight = h;
-    mFlingerSurfaceControl = control;
-    mFlingerSurface = s;
+	    if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE)
+	        return NO_INIT;
 
-    mAndroidAnimation = true;
+	    mDisplay = display;
+	    mContext = context;
+	    mSurface = surface;
+	    mWidth = w;
+	    mHeight = h;
+	    mFlingerSurfaceControl = control;
+	    mFlingerSurface = s;
 
-    // If the device has encryption turned on or is in process 
-    // of being encrypted we show the encrypted boot animation.
-    char decrypt[PROPERTY_VALUE_MAX];
-    property_get("vold.decrypt", decrypt, "");
+	    mAndroidAnimation = true;
 
-    bool encryptedAnimation = atoi(decrypt) != 0 || !strcmp("trigger_restart_min_framework", decrypt);
+	    // If the device has encryption turned on or is in process 
+	    // of being encrypted we show the encrypted boot animation.
+	    char decrypt[PROPERTY_VALUE_MAX];
+	    property_get("vold.decrypt", decrypt, "");
 
-    if ((encryptedAnimation &&
-            (access(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE, R_OK) == 0) &&
-            (mZip.open(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE) == NO_ERROR)) ||
+	    bool encryptedAnimation = atoi(decrypt) != 0 || !strcmp("trigger_restart_min_framework", decrypt);
 
-            ((access(USER_BOOTANIMATION_FILE, R_OK) == 0) &&
-            (mZip.open(USER_BOOTANIMATION_FILE) == NO_ERROR)) ||
+	    if ((encryptedAnimation &&
+	            (access(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE, R_OK) == 0) &&
+	            (mZip.open(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE) == NO_ERROR)) ||
 
-            ((access(SYSTEM_BOOTANIMATION_FILE, R_OK) == 0) &&
-            (mZip.open(SYSTEM_BOOTANIMATION_FILE) == NO_ERROR))) {
-        mAndroidAnimation = false;
-    }
+	            ((access(USER_BOOTANIMATION_FILE, R_OK) == 0) &&
+	            (mZip.open(USER_BOOTANIMATION_FILE) == NO_ERROR)) ||
+
+	            ((access(SYSTEM_BOOTANIMATION_FILE, R_OK) == 0) &&
+	            (mZip.open(SYSTEM_BOOTANIMATION_FILE) == NO_ERROR))) {
+	        mAndroidAnimation = false;
+	    }
+	    
+	    //add to start play music 
+	    this->startBootMusic();
+	}
 
     return NO_ERROR;
 }
 
 bool BootAnimation::threadLoop()
 {
-    bool r;
-    if (mAndroidAnimation) {
-        r = android();
-    } else {
-        r = movie();
-    }
+	if(!mBootVideo)
+	{
+		bool r;
+	    if (mAndroidAnimation) {
+	        r = android();
+	    } else {
+	        r = movie();
+	    }
 
-    // No need to force exit anymore
-    property_set(EXIT_PROP_NAME, "0");
+	    // No need to force exit anymore
+	    property_set(EXIT_PROP_NAME, "0");
 
-    eglMakeCurrent(mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    eglDestroyContext(mDisplay, mContext);
-    eglDestroySurface(mDisplay, mSurface);
-    mFlingerSurface.clear();
-    mFlingerSurfaceControl.clear();
-    eglTerminate(mDisplay);
-    IPCThreadState::self()->stopProcess();
-    return r;
+	    eglMakeCurrent(mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+	    eglDestroyContext(mDisplay, mContext);
+	    eglDestroySurface(mDisplay, mSurface);
+	    mFlingerSurface.clear();
+	    mFlingerSurfaceControl.clear();
+	    eglTerminate(mDisplay);
+	    IPCThreadState::self()->stopProcess();
+	    return r;
+	}
+	else
+	{
+		return true;
+	} 
 }
 
 bool BootAnimation::android()
@@ -376,6 +467,8 @@ bool BootAnimation::android()
 
     glDeleteTextures(1, &mAndroid[0].name);
     glDeleteTextures(1, &mAndroid[1].name);
+	//add to stop boot music 
+	this->stopBootMusic();
     return false;
 }
 
@@ -570,6 +663,9 @@ bool BootAnimation::movie()
             }
         }
     }
+    
+    //add to stop boot music 
+	this->stopBootMusic();
 
     return false;
 }

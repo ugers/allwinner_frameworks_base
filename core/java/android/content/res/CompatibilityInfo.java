@@ -146,6 +146,8 @@ public class CompatibilityInfo implements Parcelable {
              * <supports-screen> android:expandible in the manifest.
              */
             final int EXPANDABLE = 2;
+            
+            final int NORMAL_SCREENS = 4; 
 
             /**
              * Has the application said that its UI supports large screens?  Based on the
@@ -181,6 +183,15 @@ public class CompatibilityInfo implements Parcelable {
                     sizeInfo |= XLARGE_SCREENS | EXPANDABLE;
                 }
             }
+            
+            if ((appInfo.flags & ApplicationInfo.FLAG_SUPPORTS_NORMAL_SCREENS) != 0) {
+                anyResizeable = true;
+                sizeInfo |= NORMAL_SCREENS;
+                if (!forceCompat) {
+                    sizeInfo |= XLARGE_SCREENS | EXPANDABLE;
+               }
+            }
+                   
             if ((appInfo.flags & ApplicationInfo.FLAG_RESIZEABLE_FOR_SCREENS) != 0) {
                 anyResizeable = true;
                 sizeInfo |= EXPANDABLE;
@@ -212,8 +223,17 @@ public class CompatibilityInfo implements Parcelable {
                         compatFlags |= NEVER_NEEDS_COMPAT;
                     }
                     break;
+      
+		            case Configuration.SCREENLAYOUT_SIZE_NORMAL:
+		                if ((sizeInfo&NORMAL_SCREENS) != 0) {
+		                		compatFlags &= ~NEEDS_SCREEN_COMPAT;
+		                }
+		                if ((appInfo.flags & ApplicationInfo.FLAG_SUPPORTS_NORMAL_SCREENS) != 0) {
+		                		compatFlags |= NEVER_NEEDS_COMPAT;
+		                }
+		                break;
             }
-
+            
             if ((screenLayout&Configuration.SCREENLAYOUT_COMPAT_NEEDED) != 0) {
                 if ((sizeInfo&EXPANDABLE) != 0) {
                     compatFlags &= ~NEEDS_SCREEN_COMPAT;

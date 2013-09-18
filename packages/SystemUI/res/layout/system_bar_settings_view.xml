@@ -24,29 +24,7 @@
         >
 
     <!-- Airplane mode -->
-    <LinearLayout
-            android:id="@+id/airplane"
-            style="@style/SystemBarPanelSettingsRow"
-            >
-        <ImageView
-                android:id="@+id/airplane_icon"
-                style="@style/SystemBarPanelSettingsIcon"
-                android:src="@drawable/ic_sysbar_airplane_on"
-                />
-        <TextView
-                android:id="@+id/airplane_label"
-                style="@style/SystemBarPanelSettingsContents"
-                android:text="@string/status_bar_settings_airplane"
-                />
-        <Switch
-                android:id="@+id/airplane_checkbox"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_marginRight="5dp"
-                />
-    </LinearLayout>
-    <View style="@style/SystemBarPanelSettingsPanelSeparator" />
+    
 
     <!-- Network -->
     <LinearLayout

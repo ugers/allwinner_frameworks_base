@@ -168,6 +168,10 @@
     <string name="gps_notification_searching_text" msgid="8574247005642736060">"正在搜尋 GPS"</string>
     <string name="gps_notification_found_text" msgid="4619274244146446464">"GPS 已定位"</string>
     <string name="accessibility_clear_all" msgid="5235938559247164925">"清除所有通知。"</string>
+    <string name="usb_mounted_title">"USB設備接入"</string>
+	<string name="usb_mounted_message">"USB設備接入"</string>
+	<string name="sd_mounted_title">"SD卡設備接入"</string>
+	<string name="sd_mounted_message">"SD卡設備接入"</string>
     <string name="status_bar_notification_inspect_item_title" msgid="1163547729015390250">"應用程式資訊"</string>
     <string name="close_universe" msgid="3736513750241754348">"關閉"</string>
     <string name="notifications_off_title" msgid="8936620513608443224">"關閉通知"</string>
@@ -205,4 +209,10 @@
     <string name="quick_settings_brightness_dialog_auto_brightness_label" msgid="5064982743784071218">"自動"</string>
     <string name="status_bar_help_title" msgid="1199237744086469217">"系統會在這裡顯示通知"</string>
     <string name="status_bar_help_text" msgid="7874607155052076323">"向下滑動即可隨時存取通知。"\n"再次向下滑動即可使用系統控制項。"</string>
+    
+    <!-- add by kinier: the usb port state notification message  --> 
+	  <string name="usb_port_title">電壓或電量過低</string>
+		<string name="usb_port_message">電壓或電量過低:關閉USB端口</string>
+		<string name="usb_port_hint">USB設備不能使用</string>
+	    
 </resources>

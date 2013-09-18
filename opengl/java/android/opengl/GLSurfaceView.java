@@ -1595,6 +1595,17 @@ public class GLSurfaceView extends SurfaceView implements SurfaceHolder.Callback
                     Log.i("GLThread", "surfaceCreated tid=" + getId());
                 }
                 mHasSurface = true;
+
+				
+				if(mGameloftNeedCompat)
+				{
+					mMotionEventMayNeedAdjust = true;
+				}
+				else
+				{
+					mMotionEventMayNeedAdjust =false;
+				}
+				
                 sGLThreadManager.notifyAll();
                 while((mWaitingForSurface) && (!mExited)) {
                     try {
@@ -1612,6 +1623,9 @@ public class GLSurfaceView extends SurfaceView implements SurfaceHolder.Callback
                     Log.i("GLThread", "surfaceDestroyed tid=" + getId());
                 }
                 mHasSurface = false;
+				
+				mMotionEventMayNeedAdjust =false;
+				
                 sGLThreadManager.notifyAll();
                 while((!mWaitingForSurface) && (!mExited)) {
                     try {

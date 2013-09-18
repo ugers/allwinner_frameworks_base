@@ -261,15 +261,18 @@ public final class BluetoothHeadset implements BluetoothProfile {
         mServiceListener = l;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        IBluetoothManager mgr = mAdapter.getBluetoothManager();
-        if (mgr != null) {
-            try {
-                mgr.registerStateChangeCallback(mBluetoothStateChangeCallback);
-            } catch (RemoteException e) {
-                Log.e(TAG,"",e);
-            }
-        }
-
+		if ( mAdapter != null )
+		{
+			IBluetoothManager mgr = mAdapter.getBluetoothManager();
+	        if (mgr != null) {
+	            try {
+	                mgr.registerStateChangeCallback(mBluetoothStateChangeCallback);
+	            } catch (RemoteException e) {
+	                Log.e(TAG,"",e);
+	            }
+	        }
+		}
+        
         if (!context.bindService(new Intent(IBluetoothHeadset.class.getName()), mConnection, 0)) {
             Log.e(TAG, "Could not bind to Bluetooth Headset Service");
         }
@@ -285,13 +288,17 @@ public final class BluetoothHeadset implements BluetoothProfile {
         if (VDBG) log("close()");
 
         IBluetoothManager mgr = mAdapter.getBluetoothManager();
-        if (mgr != null) {
+		if ( mAdapter != null )
+		{
+			if (mgr != null) {
             try {
                 mgr.unregisterStateChangeCallback(mBluetoothStateChangeCallback);
             } catch (Exception e) {
                 Log.e(TAG,"",e);
             }
-        }
+        	}
+		}
+        
 
         synchronized (mConnection) {
             if (mService != null) {
@@ -873,12 +880,19 @@ public final class BluetoothHeadset implements BluetoothProfile {
     };
 
     private boolean isEnabled() {
-       if (mAdapter.getState() == BluetoothAdapter.STATE_ON) return true;
+		if ( mAdapter != null )
+        {
+        	if (mAdapter.getState() == BluetoothAdapter.STATE_ON) return true;
+		}
        return false;
     }
 
     private boolean isDisabled() {
-       if (mAdapter.getState() == BluetoothAdapter.STATE_OFF) return true;
+		if ( mAdapter != null )
+        {
+        	if (mAdapter.getState() == BluetoothAdapter.STATE_OFF) return true;
+		}
+		
        return false;
     }
 

@@ -571,9 +571,9 @@ public class WindowManagerService extends IWindowManager.Stub
 
     PowerManagerService mPowerManager;
 
-    float mWindowAnimationScale = 1.0f;
-    float mTransitionAnimationScale = 1.0f;
-    float mAnimatorDurationScale = 1.0f;
+    float mWindowAnimationScale = 0.5f;
+    float mTransitionAnimationScale = 0.5f;
+    float mAnimatorDurationScale = 0.5f;
 
     final InputManagerService mInputManager;
     final DisplayManagerService mDisplayManagerService;
@@ -5882,6 +5882,10 @@ public class WindowManagerService extends IWindowManager.Stub
 
             // The screenshot API does not apply the current screen rotation.
             rot = getDefaultDisplayContentLocked().getDisplay().getRotation();
+	   if(SystemProperties.getInt("ro.sf.hwrotation",0)==270)
+	   {                                               
+	   		rot =( rot+3)%4;
+		}
             int fw = frame.width();
             int fh = frame.height();
 
@@ -6126,6 +6130,7 @@ public class WindowManagerService extends IWindowManager.Stub
 
         final DisplayContent displayContent = getDefaultDisplayContentLocked();
         final DisplayInfo displayInfo = displayContent.getDisplayInfo();
+	
         if (!inTransaction) {
             if (SHOW_TRANSACTIONS) {
                 Slog.i(TAG, ">>> OPEN TRANSACTION setRotationUnchecked");
@@ -6383,14 +6388,25 @@ public class WindowManagerService extends IWindowManager.Stub
 
         // Any uncaught exception will crash the system process
         try {
+        	int focus_hashcode = System.identityHashCode( mCurrentFocus );
+        	int hashcode;
+        	        	
             OutputStream clientStream = client.getOutputStream();
             out = new BufferedWriter(new OutputStreamWriter(clientStream), 8 * 1024);
 
             final int count = windows.size();
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < count; i++) 
+            {            	
                 final WindowState w = windows.get(i);
-                out.write(Integer.toHexString(System.identityHashCode(w)));
+                
+                hashcode = System.identityHashCode(w);
+                
+                out.write(Integer.toHexString( hashcode ));
                 out.write(' ');
+                if ( hashcode == focus_hashcode )
+				{
+					out.write('$');
+				}
                 out.append(w.mAttrs.getTitle());
                 out.write('\n');
             }
@@ -10805,6 +10821,12 @@ public class WindowManagerService extends IWindowManager.Stub
             // XXX also need to print mDimParams and mAppWindowAnimParams.  I am lazy.
         }
     }
+    
+    //reset resetInputCalibration
+		public void resetInputCalibration() 
+		{
+			mInputManager.resetTouchCalibration();
+		}
 
     boolean dumpWindows(PrintWriter pw, String name, String[] args,
             int opti, boolean dumpAll) {

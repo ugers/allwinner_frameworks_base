@@ -132,17 +132,25 @@ public final class BluetoothPan implements BluetoothProfile {
         mContext = context;
         mServiceListener = l;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-        try {
-            mAdapter.getBluetoothManager().registerStateChangeCallback(mStateChangeCallback);
-        } catch (RemoteException re) {
-            Log.w(TAG,"Unable to register BluetoothStateChangeCallback",re);
-        }
-        Log.d(TAG, "BluetoothPan() call bindService");
-        if (!context.bindService(new Intent(IBluetoothPan.class.getName()),
-                                 mConnection, 0)) {
-            Log.e(TAG, "Could not bind to Bluetooth HID Service");
-        }
-        Log.d(TAG, "BluetoothPan(), bindService called");
+		if ( mAdapter != null )
+		{
+			try 
+			{
+            	mAdapter.getBluetoothManager().registerStateChangeCallback(mStateChangeCallback);
+	        } catch (RemoteException re) {
+	            Log.w(TAG,"Unable to register BluetoothStateChangeCallback",re);
+	        }
+			
+	        Log.d(TAG, "BluetoothPan() call bindService");
+	        if (!context.bindService(new Intent(IBluetoothPan.class.getName()),
+	                                 mConnection, 0)) {
+	            Log.e(TAG, "Could not bind to Bluetooth HID Service");
+	        }
+	        Log.d(TAG, "BluetoothPan(), bindService called");
+		}
+
+		
+        
     }
 
     /*package*/ void close() {
@@ -152,11 +160,18 @@ public final class BluetoothPan implements BluetoothProfile {
             mConnection = null;
         }
         mServiceListener = null;
-        try {
-            mAdapter.getBluetoothManager().unregisterStateChangeCallback(mStateChangeCallback);
-        } catch (RemoteException re) {
-            Log.w(TAG,"Unable to register BluetoothStateChangeCallback",re);
-        }
+
+		if ( mAdapter != null )
+		{
+			try 
+			{
+            	mAdapter.getBluetoothManager().unregisterStateChangeCallback(mStateChangeCallback);
+	        } catch (RemoteException re) {
+	            Log.w(TAG,"Unable to register BluetoothStateChangeCallback",re);
+	        }
+		}
+		
+        
     }
 
     protected void finalize() {
@@ -354,7 +369,12 @@ public final class BluetoothPan implements BluetoothProfile {
     };
 
     private boolean isEnabled() {
-       if (mAdapter.getState() == BluetoothAdapter.STATE_ON) return true;
+
+		if ( mAdapter != null )
+		{
+			if (mAdapter.getState() == BluetoothAdapter.STATE_ON) return true;
+		}
+		       
        return false;
     }
 

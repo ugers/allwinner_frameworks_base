@@ -167,7 +167,13 @@ public final class BluetoothSocket implements Closeable {
 
         if (device == null) {
             // Server socket
-            mAddress = BluetoothAdapter.getDefaultAdapter().getAddress();
+
+			BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+			if ( adapter != null )
+			{
+				mAddress = adapter.getAddress();
+			}
+			            
         } else {
             // Remote socket
             mAddress = device.getAddress();
@@ -198,7 +204,13 @@ public final class BluetoothSocket implements Closeable {
         as.mSocketIS = as.mSocket.getInputStream();
         as.mSocketOS = as.mSocket.getOutputStream();
         as.mAddress = RemoteAddr;
-        as.mDevice = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(RemoteAddr);
+
+		BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+		if ( adapter != null )
+		{
+			as.mDevice = adapter.getRemoteDevice(RemoteAddr);
+		}
+		        
         return as;
     }
     /**
@@ -301,10 +313,16 @@ public final class BluetoothSocket implements Closeable {
 
         try {
             if (mSocketState == SocketState.CLOSED) throw new IOException("socket closed");
-            IBluetooth bluetoothProxy = BluetoothAdapter.getDefaultAdapter().getBluetoothService(null);
-            if (bluetoothProxy == null) throw new IOException("Bluetooth is off");
-            mPfd = bluetoothProxy.connectSocket(mDevice, mType,
+
+			BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+			if ( adapter != null )
+			{
+				IBluetooth bluetoothProxy = adapter.getBluetoothService(null);
+	            if (bluetoothProxy == null) throw new IOException("Bluetooth is off");
+	            mPfd = bluetoothProxy.connectSocket(mDevice, mType,
                     mUuid, mPort, getSecurityFlags());
+			}
+            
             synchronized(this)
             {
                 if (DBG) Log.d(TAG, "connect(), SocketState: " + mSocketState + ", mPfd: " + mPfd);
@@ -338,18 +356,25 @@ public final class BluetoothSocket implements Closeable {
     /*package*/ int bindListen() {
         int ret;
         if (mSocketState == SocketState.CLOSED) return EBADFD;
-        IBluetooth bluetoothProxy = BluetoothAdapter.getDefaultAdapter().getBluetoothService(null);
-        if (bluetoothProxy == null) {
-            Log.e(TAG, "bindListen fail, reason: bluetooth is off");
-            return -1;
-        }
-        try {
-            mPfd = bluetoothProxy.createSocketChannel(mType, mServiceName,
-                    mUuid, mPort, getSecurityFlags());
-        } catch (RemoteException e) {
-            Log.e(TAG, Log.getStackTraceString(new Throwable()));
-            return -1;
-        }
+
+		BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+		if ( adapter != null )
+		{
+			IBluetooth bluetoothProxy = BluetoothAdapter.getDefaultAdapter().getBluetoothService(null);
+	        if (bluetoothProxy == null) {
+	            Log.e(TAG, "bindListen fail, reason: bluetooth is off");
+	            return -1;
+	        }
+	        try {
+	            mPfd = bluetoothProxy.createSocketChannel(mType, mServiceName,
+	                    mUuid, mPort, getSecurityFlags());
+	        } catch (RemoteException e) {
+	            Log.e(TAG, Log.getStackTraceString(new Throwable()));
+	            return -1;
+	        }
+		}
+		
+        
 
         // read out port number
         try {

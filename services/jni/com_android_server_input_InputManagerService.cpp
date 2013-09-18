@@ -1205,6 +1205,15 @@ static jboolean nativeTransferTouchFocus(JNIEnv* env,
             transferTouchFocus(fromChannel, toChannel);
 }
 
+static void nativeResetTouchCalibration(JNIEnv* env, jclass clazz, jint ptr) 
+{
+    NativeInputManager* im = reinterpret_cast<NativeInputManager*>(ptr);
+    im->getInputManager()->getReader()->resetTouchCalibration();
+   
+
+}
+
+
 static void nativeSetPointerSpeed(JNIEnv* env,
         jclass clazz, jint ptr, jint speed) {
     NativeInputManager* im = reinterpret_cast<NativeInputManager*>(ptr);
@@ -1336,6 +1345,10 @@ static JNINativeMethod gInputManagerMethods[] = {
             (void*) nativeDump },
     { "nativeMonitor", "(I)V",
             (void*) nativeMonitor },
+            
+    { "nativeResetTouchCalibration", "(I)V",
+			      (void*) nativeResetTouchCalibration },
+
 };
 
 #define FIND_CLASS(var, className) \

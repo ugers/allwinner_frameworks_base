@@ -1646,6 +1646,13 @@ public final class Settings {
          */
         public static final String FONT_SCALE = "font_scale";
 
+
+		/**		 * To use default or special accelerometer coordinate system		 * @hide		 */
+		public static final String ACCELEROMETER_COORDINATE = "accelerometer_coordinate";
+
+		/**		 * To use turn on/off smart brightness		 * @hide		 */
+		public static final String SMART_BRIGHTNESS_ENABLE = "smart_brightness_enable";
+
         /**
          * Name of an application package to be debugged.
          *
@@ -2273,6 +2280,22 @@ public final class Settings {
          * @hide
          */
         public static final String POINTER_SPEED = "pointer_speed";
+
+
+		
+		/**
+		* the display mode options.
+		* add by huanglong
+		* @hide 
+		*/
+		public static final String DISPLAY_ADAPTION_MODE = "display_adaption_mode";
+		
+		/**
+		* enable the screen adaption.
+		* add by huanglong
+		* @hide 
+		*/
+		public static final String DISPLAY_ADAPTION_ENABLE = "display_adapter_enable";
 
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
@@ -3562,6 +3585,17 @@ public final class Settings {
         @Deprecated
         public static final String WIFI_NUM_OPEN_NETWORKS_KEPT =
                 Global.WIFI_NUM_OPEN_NETWORKS_KEPT;
+        /**
+         * Ethernet related configurations
+         */
+        public static final String ETHERNET_ON      = "eth_on";
+        public static final String ETHERNET_MODE    = "eth_mode";
+        public static final String ETHERNET_IP      = "eth_ip";
+        public static final String ETHERNET_MASK    = "eth_netmask";
+        public static final String ETHERNET_DNS     = "eth_dns";
+        public static final String ETHERNET_ROUTE   = "eth_route";
+        public static final String ETHERNET_CONF    = "eth_conf";
+        public static final String ETHERNET_IFNAME  = "eth_ifname";
 
         /**
          * @deprecated Use {@link android.provider.Settings.Global#WIFI_ON}

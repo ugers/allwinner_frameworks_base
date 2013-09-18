@@ -48,6 +48,9 @@ import com.android.internal.telephony.ITelephony;
 import android.util.Log;
 import android.view.WindowManager;
 
+import android.media.MediaPlayer;
+import java.io.IOException;
+
 public final class ShutdownThread extends Thread {
     // constants
     private static final String TAG = "ShutdownThread";
@@ -209,6 +212,17 @@ public final class ShutdownThread extends Thread {
             }
             sIsStarted = true;
         }
+        
+        MediaPlayer mediaplayer = new MediaPlayer();
+        try{
+                       
+           mediaplayer.setDataSource("/system/media/shutdown.mp3");
+           mediaplayer.prepare();
+           mediaplayer.setLooping(true);
+           mediaplayer.start();
+        }catch (IOException e){
+        	
+        } 
 
         // throw up an indeterminate system dialog to indicate radio is
         // shutting down.
@@ -327,7 +341,10 @@ public final class ShutdownThread extends Thread {
         }
 
         // Shutdown radios.
-        shutdownRadios(MAX_RADIO_WAIT_TIME);
+        //shutdownRadios(MAX_RADIO_WAIT_TIME);
+        if(SystemProperties.get("ro.sw.embeded.telephony").equals("true")) {
+        	shutdownRadios(MAX_RADIO_WAIT_TIME);
+        }
 
         // Shutdown MountService to ensure media is in a safe state
         IMountShutdownObserver observer = new IMountShutdownObserver.Stub() {

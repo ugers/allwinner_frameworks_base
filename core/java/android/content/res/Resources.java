@@ -117,6 +117,7 @@ public class Resources {
     private NativePluralRules mPluralRule;
     
     private CompatibilityInfo mCompatibilityInfo;
+	public static final String path_separate = " / ";
 
     /** @hide */
     public static int selectDefaultTheme(int curTheme, int targetSdkVersion) {
@@ -1659,6 +1660,24 @@ public class Resources {
         throw new NotFoundException("Unable to find resource ID #0x"
                 + Integer.toHexString(resid));
     }
+	public String getDrawableResourceName(int resid) throws NotFoundException {
+
+			String cookie;
+			String path;
+
+		synchronized (mTmpValue) 
+		{
+            TypedValue value = mTmpValue;
+            getValue( resid, value, true);
+
+			cookie = mAssets.getCookieName(value.assetCookie);
+			path = value.string.toString();
+
+//			Log.i( "zhao", "&cookie = " + cookie + " file =" + path );
+
+			return cookie + path_separate + path;
+        }
+        }
     
     /**
      * Return the package name for a given resource identifier.
@@ -1908,6 +1927,7 @@ public class Resources {
         Drawable dr = getCachedDrawable(isColorDrawable ? mColorDrawableCache : mDrawableCache, key);
 
         if (dr != null) {
+			dr.resId = id;
             return dr;
         }
 
@@ -2004,6 +2024,7 @@ public class Resources {
             }
         }
 
+		dr.resId = id;
         return dr;
     }
 
@@ -2138,6 +2159,7 @@ public class Resources {
             TypedValue value = mTmpValue;
             getValue(id, value, true);
             if (value.type == TypedValue.TYPE_STRING) {
+//				Log.i( "zhao", "cookie === " +  mAssets.getCookieName(value.assetCookie) + " xml ============ " + value.string.toString() );
                 return loadXmlResourceParser(value.string.toString(), id,
                         value.assetCookie, type);
             }
@@ -2159,7 +2181,17 @@ public class Resources {
                         if (mCachedXmlBlockIds[i] == id) {
                             //System.out.println("**** REUSING XML BLOCK!  id="
                             //                   + id + ", index=" + i);
-                            return mCachedXmlBlocks[i].newParser();
+
+							String name = mAssets.getCookieName(assetCookie);
+							if ( name != null )
+							{
+								return mCachedXmlBlocks[i].newParser( name + path_separate + file );
+							}
+							else
+							{
+								return mCachedXmlBlocks[i].newParser( file );
+							}
+							
                         }
                     }
 
@@ -2179,7 +2211,18 @@ public class Resources {
                         mCachedXmlBlocks[pos] = block;
                         //System.out.println("**** CACHING NEW XML BLOCK!  id="
                         //                   + id + ", index=" + pos);
-                        return block.newParser();
+
+						String name = mAssets.getCookieName(assetCookie);
+						if ( name != null )
+						{
+							return block.newParser( name + path_separate + file );
+						}
+						else
+						{
+							return block.newParser( file );
+						}
+						
+//                        return block.newParser( mAssets.getCookieName(assetCookie) + path_separate + file );
                     }
                 }
             } catch (Exception e) {

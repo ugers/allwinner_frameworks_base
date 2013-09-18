@@ -582,11 +582,20 @@ class QuickSettings {
                 bluetoothTile.setOnLongClickListener(new View.OnLongClickListener() {
                     @Override
                     public boolean onLongClick(View v) {
-                        if (mBluetoothAdapter.isEnabled()) {
-                            mBluetoothAdapter.disable();
-                        } else {
-                            mBluetoothAdapter.enable();
-                        }
+
+						if ( mBluetoothAdapter != null )
+						{
+							 if (mBluetoothAdapter.isEnabled()) 
+							 {
+                             	mBluetoothAdapter.disable();
+	                         }
+							 else
+							 {
+	                         	mBluetoothAdapter.enable();
+	                         }
+						}
+							
+                       
                         bluetoothTile.setPressed(false);
                         return true;
                     }});

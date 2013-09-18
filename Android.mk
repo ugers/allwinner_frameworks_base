@@ -139,6 +139,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/os/INetworkManagementService.aidl \
 	core/java/android/os/IPermissionController.aidl \
 	core/java/android/os/IPowerManager.aidl \
+	core/java/android/os/IDynamicPManager.aidl \
 	core/java/android/os/IRemoteCallback.aidl \
 	core/java/android/os/ISchedulingPolicyService.aidl \
 	core/java/android/os/IUpdateLock.aidl \
@@ -162,6 +163,9 @@ LOCAL_SRC_FILES += \
 	core/java/android/view/IWindow.aidl \
 	core/java/android/view/IWindowManager.aidl \
 	core/java/android/view/IWindowSession.aidl \
+	core/java/android/wifidisplay/IWifiDisplayManager.aidl \
+    core/java/android/wifidisplay/IWifiDisplayThread.aidl \
+	core/java/android/view/IDisplayManagerAw.aidl \
 	core/java/android/speech/IRecognitionListener.aidl \
 	core/java/android/speech/IRecognitionService.aidl \
 	core/java/android/speech/tts/ITextToSpeechCallback.aidl \
@@ -222,7 +226,12 @@ LOCAL_SRC_FILES += \
 	wifi/java/android/net/wifi/p2p/IWifiP2pManager.aidl \
 	voip/java/android/net/sip/ISipSession.aidl \
 	voip/java/android/net/sip/ISipSessionListener.aidl \
-	voip/java/android/net/sip/ISipService.aidl
+	voip/java/android/net/sip/ISipService.aidl \
+	ethernet/java/android/net/ethernet/IEthernetManager.aidl \
+	core/java/android/net/http/HttpResponseCache.java \
+    core/java/android/net/http/HttpAuthHeader.java \
+    core/java/android/net/http/AndroidHttpClient.java \
+    core/java/android/net/http/Timer.java
 #
 
 

@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.STATUS_BAR" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.REMOTE_AUDIO_PLAYBACK" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <uses-permission android:name="android.permission.MANAGE_USERS" />
     <uses-permission android:name="android.permission.READ_PROFILE" />
@@ -231,5 +232,13 @@
                 <category android:name="android.intent.category.DESK_DOCK" />
             </intent-filter>
         </activity>
+        
+        <receiver android:name="com.android.systemui.usb.UsbPortPowerReceiver" >
+            <intent-filter > 
+                <action android:name="android.hardware.usb.action.USB_PORT_STATE"/> 
+            </intent-filter>
+        </receiver>
+        
+        
     </application>
 </manifest>

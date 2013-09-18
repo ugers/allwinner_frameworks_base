@@ -503,4 +503,9 @@ public class IWindowManagerImpl implements IWindowManager {
             throws RemoteException {
         // TODO Auto-generated method stub
     }
+    
+    @Override
+    public void resetInputCalibration() {
+			// TODO Auto-generated method stub
+    }
 }

@@ -485,7 +485,10 @@ public final class BluetoothDevice implements Parcelable {
         synchronized (BluetoothDevice.class) {
             if (sService == null) {
                 BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                sService = adapter.getBluetoothService(mStateChangeCallback);
+				if ( adapter != null )
+				{
+					sService = adapter.getBluetoothService(mStateChangeCallback);
+				}
             }
         }
         return sService;

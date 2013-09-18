@@ -170,6 +170,18 @@
     <string name="accessibility_clear_all" msgid="5235938559247164925">"清除所有通知。"</string>
     <string name="status_bar_notification_inspect_item_title" msgid="1163547729015390250">"应用信息"</string>
     <string name="close_universe" msgid="3736513750241754348">"关闭"</string>
+	<!-- ethernet string  -->
+	<string name="ethernet_link">以太网连接到网络</string>
+	<string name="ethernet_description">以太网络</string>
+   <string name="usb_mounted_title">"USB设备接入"</string>
+	<string name="usb_mounted_message">"USB设备接入"</string>
+	<string name="sd_mounted_title">"SD卡设备接入"</string>
+	<string name="sd_mounted_message">"SD卡设备接入"</string>
+	
+	<string name="usb_nomedia_notification_title">"已移除 USB 设备"</string>
+	<string name="usb_nomedia_notification_message">"USB 设备已移除。"</string>
+    <string name="usb_badremoval_notification_title">"USB 存储设备已意外移除"</string>
+	<string name="usb_badremoval_notification_message">"请先卸载 USB 存储设备，再将其移除，以防数据丢失。"</string>
     <string name="notifications_off_title" msgid="8936620513608443224">"通知功能已停用"</string>
     <string name="notifications_off_text" msgid="2529001315769385273">"点按此处可重新启用通知功能。"</string>
     <string name="accessibility_rotation_lock_off" msgid="4062780228931590069">"屏幕会自动旋转。"</string>
@@ -205,4 +217,11 @@
     <string name="quick_settings_brightness_dialog_auto_brightness_label" msgid="5064982743784071218">"自动"</string>
     <string name="status_bar_help_title" msgid="1199237744086469217">"通知会显示在这里"</string>
     <string name="status_bar_help_text" msgid="7874607155052076323">"向下滑动可随时查看通知。"\n"再次向下滑动可使用系统控制功能。"</string>
+    
+       
+	  <!-- add by kinier: the usb port state notification message  --> 
+	  <string name="usb_port_title">电压或电量过低</string>
+		<string name="usb_port_message">电压或电量过低:关闭USB端口</string>
+		<string name="usb_port_hint">USB设备不能使用</string>
+	
 </resources>

@@ -16,6 +16,11 @@
 
 package com.android.systemui.statusbar.tablet;
 
+import java.util.Timer; //
+import java.util.TimerTask; // 
+import android.os.Messenger; //
+import android.content.ComponentName; // 
+import android.content.ServiceConnection; //
 import android.animation.LayoutTransition;
 import android.animation.ObjectAnimator;
 import android.app.ActivityManager;
@@ -35,9 +40,11 @@ import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.inputmethodservice.InputMethodService;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
+import android.os.storage.StorageManager;
 import android.text.TextUtils;
 import android.util.Slog;
 import android.view.Display;
@@ -68,6 +75,7 @@ import com.android.systemui.statusbar.NotificationData.Entry;
 import com.android.systemui.statusbar.SignalClusterView;
 import com.android.systemui.statusbar.StatusBarIconView;
 import com.android.systemui.statusbar.policy.BatteryController;
+import com.android.systemui.statusbar.policy.DisplayController;
 import com.android.systemui.statusbar.policy.BluetoothController;
 import com.android.systemui.statusbar.policy.CompatModeButton;
 import com.android.systemui.statusbar.policy.LocationController;
@@ -78,6 +86,7 @@ import com.android.systemui.statusbar.policy.Prefs;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import android.util.Log;
 
 public class TabletStatusBar extends BaseStatusBar implements
         InputMethodsPanel.OnHardKeyboardEnabledChangeListener {
@@ -99,6 +108,7 @@ public class TabletStatusBar extends BaseStatusBar implements
     public static final int MSG_CLOSE_COMPAT_MODE_PANEL = 1051;
     public static final int MSG_STOP_TICKER = 2000;
 
+	private boolean taking_ScreenShot = false;
     // Fitts' Law assistance for LatinIME; see policy.EventHole
     private static final boolean FAKE_SPACE_BAR = true;
 
@@ -131,8 +141,11 @@ public class TabletStatusBar extends BaseStatusBar implements
     View mHomeButton;
     View mMenuButton;
     View mRecentButton;
+	View mVolumeUpButton;
+	View mVolumeDownButton;
+	View mScreenShotButton;
     private boolean mAltBackButtonEnabledForIme;
-
+	
     ViewGroup mFeedbackIconArea; // notification icons, IME icon, compat icon
     InputMethodButton mInputMethodSwitchButton;
     CompatModeButton mCompatModeButton;
@@ -153,6 +166,7 @@ public class TabletStatusBar extends BaseStatusBar implements
     LocationController mLocationController;
     NetworkController mNetworkController;
     DoNotDisturb mDoNotDisturb;
+	DisplayController mDisplayController;
 
     ViewGroup mBarContents;
 
@@ -179,7 +193,9 @@ public class TabletStatusBar extends BaseStatusBar implements
     private int mNavigationIconHints = 0;
 
     private int mShowSearchHoldoff = 0;
-
+    
+    private StorageManager mStorageManager;
+	private boolean mShow = true;	//add by Derek for volume display,2012.11.26
     public Context getContext() { return mContext; }
 
     private Runnable mShowSearchPanel = new Runnable() {
@@ -377,10 +393,14 @@ public class TabletStatusBar extends BaseStatusBar implements
     @Override
     public void start() {
         super.start(); // will add the main bar view
+        mStorageManager = (StorageManager) mContext.getSystemService(Context.STORAGE_SERVICE);
+        mStorageManager.registerListener(
+        new com.android.systemui.usb.StorageNotification(mContext));
     }
 
     @Override
     protected void onConfigurationChanged(Configuration newConfig) {
+        mStatusBarView.setShowVolume(mShow,mContext);
         loadDimens();
         mNotificationPanelParams.height = getNotificationPanelHeight();
         mWindowManager.updateViewLayout(mNotificationPanel, mNotificationPanelParams);
@@ -487,6 +507,7 @@ public class TabletStatusBar extends BaseStatusBar implements
         mDoNotDisturb = new DoNotDisturb(mContext);
 
         mBatteryController = new BatteryController(mContext);
+		mDisplayController = new DisplayController(mContext);
         mBatteryController.addIconView((ImageView)sb.findViewById(R.id.battery));
         mBluetoothController = new BluetoothController(mContext);
         mBluetoothController.addIconView((ImageView)sb.findViewById(R.id.bluetooth));
@@ -501,9 +522,15 @@ public class TabletStatusBar extends BaseStatusBar implements
         mNavigationArea = (ViewGroup) sb.findViewById(R.id.navigationArea);
         mHomeButton = mNavigationArea.findViewById(R.id.home);
         mMenuButton = mNavigationArea.findViewById(R.id.menu);
+		mVolumeDownButton = mNavigationArea.findViewById(R.id.volume_down);
+		mVolumeUpButton = mNavigationArea.findViewById(R.id.volume_up);
         mRecentButton = mNavigationArea.findViewById(R.id.recent_apps);
         mRecentButton.setOnClickListener(mOnClickListener);
 
+		
+		mScreenShotButton = mNavigationArea.findViewById(R.id.screenshot);
+		mScreenShotButton.setOnClickListener(mOnClickListener);
+		
         LayoutTransition lt = new LayoutTransition();
         lt.setDuration(250);
         // don't wait for these transitions; we just want icons to fade in/out, not move around
@@ -894,6 +921,8 @@ public class TabletStatusBar extends BaseStatusBar implements
         // act accordingly
         if ((diff & StatusBarManager.DISABLE_CLOCK) != 0) {
             boolean show = (state & StatusBarManager.DISABLE_CLOCK) == 0;
+			mShow = show;
+			mStatusBarView.setShowVolume(show,mContext);
             Slog.i(TAG, "DISABLE_CLOCK: " + (show ? "no" : "yes"));
             showClock(show);
         }
@@ -945,10 +974,21 @@ public class TabletStatusBar extends BaseStatusBar implements
         boolean disableRecent = ((visibility & StatusBarManager.DISABLE_RECENT) != 0);
         boolean disableBack = ((visibility & StatusBarManager.DISABLE_BACK) != 0);
 
+		
+		boolean disableVolumeUp = (visibility != 0);
+		boolean disableVolumeDown = (visibility != 0);
+		
         mBackButton.setVisibility(disableBack ? View.INVISIBLE : View.VISIBLE);
         mHomeButton.setVisibility(disableHome ? View.INVISIBLE : View.VISIBLE);
         mRecentButton.setVisibility(disableRecent ? View.INVISIBLE : View.VISIBLE);
 
+		
+		if(mContext.getResources().getBoolean(R.bool.hasVolumeButton))
+		{
+			mVolumeUpButton.setVisibility(disableVolumeUp ? View.INVISIBLE : View.VISIBLE);
+			mVolumeDownButton.setVisibility(disableVolumeDown ? View.INVISIBLE : View.VISIBLE);
+		}
+		
         mInputMethodSwitchButton.setScreenLocked(
                 (visibility & StatusBarManager.DISABLE_SYSTEM_INFO) != 0);
     }
@@ -1095,7 +1135,7 @@ public class TabletStatusBar extends BaseStatusBar implements
         if (DEBUG) {
             Slog.d(TAG, (showMenu?"showing":"hiding") + " the MENU button");
         }
-        mMenuButton.setVisibility(showMenu ? View.VISIBLE : View.GONE);
+        //mMenuButton.setVisibility(showMenu ? View.VISIBLE : View.GONE);
 
         // See above re: lights-out policy for legacy apps.
         if (showMenu) setLightsOn(true);
@@ -1212,15 +1252,112 @@ public class TabletStatusBar extends BaseStatusBar implements
     private View.OnClickListener mOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             if (v == mRecentButton) {
-                onClickRecentButton();
+                //onClickRecentButton();
+				if(!taking_ScreenShot) {
+					onClickRecentButton();
+				}
             } else if (v == mInputMethodSwitchButton) {
                 onClickInputMethodSwitchButton();
             } else if (v == mCompatModeButton) {
                 onClickCompatModeButton();
-            }
+            }else if (v == mScreenShotButton){
+				takeScreenshot();
+			}
         }
     };
 
+	final Object mScreenshotLock = new Object();
+    ServiceConnection mScreenshotConnection = null;
+    final Runnable mScreenshotTimeout = new Runnable() {
+        @Override public void run() {
+           Slog.d(TAG, "exec mScreenshotTimeout...");
+            synchronized (mScreenshotLock) {
+                if (mScreenshotConnection != null) {
+                    mContext.unbindService(mScreenshotConnection);
+                   
+                    mScreenshotConnection = null;
+                   
+                }
+            }
+        }
+    };
+    final Runnable mReleaseRecentButton = new Runnable() {
+       @Override public void run() {
+           taking_ScreenShot = false;
+           Slog.d(TAG, "taking_ScreenShot = " + taking_ScreenShot);
+       }
+    };
+    private void takeScreenshot() {
+               synchronized (mScreenshotLock) {
+                   if (mScreenshotConnection != null) {
+                       Slog.d(TAG, "mScreenshotConnection is not equal value null");
+                       return;
+                   }
+                   
+                   ComponentName cn = new ComponentName("com.android.systemui", "com.android.systemui.screenshot.TakeScreenshotService");
+                   Intent intent = new Intent();
+                   intent.setComponent(cn);
+                   ServiceConnection conn = new ServiceConnection() {
+                       @Override
+                       public void onServiceConnected(ComponentName name, IBinder service) {
+                           synchronized (mScreenshotLock) {
+                               if (mScreenshotConnection != this) {
+                                   return;
+                               }
+                               taking_ScreenShot = true;
+                               Slog.d(TAG, "taking_ScreenShot = " + taking_ScreenShot);
+                               Messenger messenger = new Messenger(service);
+                               Message msg = Message.obtain(null, 1);
+                               final ServiceConnection myConn = this;
+                               Handler h = new Handler(mHandler.getLooper()) {
+                                   @Override
+                                   public void handleMessage(Message msg) {
+                                       synchronized (mScreenshotLock) {
+                                           if (mScreenshotConnection == myConn) {
+                                               mContext.unbindService(mScreenshotConnection);
+                                               mScreenshotConnection = null;
+                                               mHandler.removeCallbacks(mScreenshotTimeout);
+                                           }
+                                       }
+                                   }
+                               };
+                               msg.replyTo = new Messenger(h);
+                               msg.arg1 = msg.arg2 = 0;
+                               //if (mStatusBar != null && mStatusBar.isVisibleLw())
+                                   msg.arg1 = 1;
+                               //if (mNavigationBar != null && mNavigationBar.isVisibleLw())
+                                   msg.arg2 = 1;
+                               try {
+                                   messenger.send(msg);
+                                   mHandler.postDelayed(mReleaseRecentButton, 2000);
+                               } catch (RemoteException e) {
+                               }
+                           }
+                       }
+                       @Override
+                       public void onServiceDisconnected(ComponentName name) {
+                           Slog.d(TAG, "exec onServiceDisconnected...");
+                       }
+                   };
+                   if (mContext.bindService(intent, conn, Context.BIND_AUTO_CREATE)) {
+                       mScreenshotConnection = conn;
+                       mHandler.postDelayed(mScreenshotTimeout, 10000);
+                   }
+               }
+    }
+    private View.OnLongClickListener mOnLongClickListener = new View.OnLongClickListener() {
+       @Override
+       public boolean onLongClick(View v) {
+           Slog.d(TAG, "1 ***********************");
+           if(v == mScreenShotButton) {
+               Slog.d(TAG, "take screenshot start...");
+               takeScreenshot();
+               Slog.d(TAG, "take screenshot finished...");
+           }
+           Slog.d(TAG, "2 ***********************");
+           return true;
+       }
+    };
     public void onClickRecentButton() {
         if (DEBUG) Slog.d(TAG, "clicked recent apps; disabled=" + mDisabled);
         if ((mDisabled & StatusBarManager.DISABLE_EXPAND) == 0) {

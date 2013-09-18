@@ -150,14 +150,20 @@ public class BluetoothPbap {
         mContext = context;
         mServiceListener = l;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-        IBluetoothManager mgr = mAdapter.getBluetoothManager();
-        if (mgr != null) {
-            try {
-                mgr.registerStateChangeCallback(mBluetoothStateChangeCallback);
-            } catch (RemoteException e) {
-                Log.e(TAG,"",e);
-            }
-        }
+		if ( mAdapter != null )
+		{
+			IBluetoothManager mgr = mAdapter.getBluetoothManager();
+	        if (mgr != null) {
+	            try {
+	                mgr.registerStateChangeCallback(mBluetoothStateChangeCallback);
+	            } catch (RemoteException e) {
+	                Log.e(TAG,"",e);
+	            }
+	        }
+		}
+
+		
+        
         if (!context.bindService(new Intent(IBluetoothPbap.class.getName()), mConnection, 0)) {
             Log.e(TAG, "Could not bind to Bluetooth Pbap Service");
         }
@@ -178,14 +184,23 @@ public class BluetoothPbap {
      * are ok.
      */
     public synchronized void close() {
-        IBluetoothManager mgr = mAdapter.getBluetoothManager();
-        if (mgr != null) {
-            try {
-                mgr.unregisterStateChangeCallback(mBluetoothStateChangeCallback);
-            } catch (Exception e) {
-                Log.e(TAG,"",e);
-            }
-        }
+        
+		if ( mAdapter != null )
+		{
+			IBluetoothManager mgr = mAdapter.getBluetoothManager();
+		
+			if (mgr != null) 
+			{
+	            try 
+				{
+	                mgr.unregisterStateChangeCallback(mBluetoothStateChangeCallback);
+	            } catch (Exception e) 
+	            {
+	                Log.e(TAG,"",e);
+	            }
+        	}
+		}
+        
 
         synchronized (mConnection) {
             if (mService != null) {
